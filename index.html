@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Offer</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top))
+               max(24px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom))
+               max(24px, env(safe-area-inset-left));
+      background: radial-gradient(ellipse at center, #101810 0%, #050705 48%, #000 100%);
+    }
+
+    .offer {
+      width: min(100%, 400px);
+      padding: 32px 24px;
+      text-align: center;
+      border: 1px solid #28452c;
+      border-radius: 18px;
+      background: rgba(5, 12, 6, 0.94);
+      box-shadow: 0 0 40px rgba(49, 255, 82, 0.1);
+    }
+
+    .offer h1 {
+      margin: 0 0 18px;
+      font-size: clamp(1.45rem, 6vw, 2rem);
+      line-height: 1.2;
+    }
+
+    .offer p {
+      margin: 0 0 28px;
+      color: #c9d4ca;
+      font-size: 1.15rem;
+      line-height: 1.6;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    button {
+      min-width: 112px;
+      min-height: 48px;
+      padding: 12px 22px;
+      border: 1px solid #426e48;
+      border-radius: 10px;
+      color: #fff;
+      background: #142417;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #72ff82;
+      outline-offset: 3px;
+    }
+
+    #yes {
+      border-color: #52e76b;
+      background: #126022;
+    }
+
+    #yes:hover { background: #19782c; }
+    #no:hover { background: #29312a; }
+
+    #effect {
+      position: fixed;
+      inset: 0;
+      display: none;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #matrix {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sim-label {
+      position: absolute;
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      padding: 5px 8px;
+      border: 1px solid rgba(62, 255, 89, 0.22);
+      border-radius: 4px;
+      color: rgba(107, 255, 125, 0.55);
+      background: rgba(0, 0, 0, 0.48);
+      font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.12em;
+      pointer-events: none;
+    }
+
+    #declined {
+      display: none;
+      color: #c9d4ca;
+      font-size: 1.1rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .offer { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="screen" id="offerScreen">
+    <section class="offer" aria-labelledby="offerTitle">
+      <h1 id="offerTitle">Do you want to accept this offer?</h1>
+      <p>This is a $2,000 offer.</p>
+      <div class="buttons">
+        <button id="yes" type="button">Yes</button>
+        <button id="no" type="button">No</button>
+      </div>
+      <p id="declined" role="status">Offer declined.</p>
+    </section>
+  </main>
+
+  <div id="effect" aria-label="Animated cinematic visual effect">
+    <canvas id="matrix"></canvas>
+    <div class="sim-label">CINEMATIC SIMULATION · VISUAL EFFECT ONLY</div>
+  </div>
+
+  <script>
+    (() => {
+      const offerScreen = document.getElementById("offerScreen");
+      const effect = document.getElementById("effect");
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const yesButton = document.getElementById("yes");
+      const noButton = document.getElementById("no");
+      const declined = document.getElementById("declined");
+
+      const glyphs =
+        "01アイウエオカキクケコサシスセソタチツテトナニヌネノ" +
+        "{}[]<>/\\|;:=+-_*&%$#@!?abcdefABCDEF";
+
+      let width = 0;
+      let height = 0;
+      let fontSize = 15;
+      let columns = [];
+      let animationFrame = 0;
+      let running = false;
+
+      function randomGlyph() {
+        return glyphs[Math.floor(Math.random() * glyphs.length)];
+      }
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        fontSize = Math.max(12, Math.min(18, Math.round(width / 28)));
+        const count = Math.ceil(width / fontSize);
+        columns = Array.from({ length: count }, () => ({
+          y: Math.random() * -height / fontSize,
+          speed: 0.35 + Math.random() * 1.15,
+          length: 8 + Math.floor(Math.random() * 24)
+        }));
+
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function draw() {
+        if (!running) return;
+
+        // A translucent wash leaves fading trails behind each stream.
+        ctx.fillStyle = "rgba(0, 0, 0, 0.09)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+        ctx.textBaseline = "top";
+
+        columns.forEach((column, i) => {
+          const x = i * fontSize;
+          const headY = column.y * fontSize;
+
+          // Bright leading glyph.
+          ctx.fillStyle = "#d8ffe0";
+          ctx.shadowColor = "#32ff4e";
+          ctx.shadowBlur = 10;
+          ctx.fillText(randomGlyph(), x, headY);
+
+          // Green characters trailing down the screen.
+          ctx.shadowBlur = 3;
+          for (let n = 1; n < column.length; n++) {
+            const trailY = headY - n * fontSize;
+            if (trailY < 0 || trailY > height) continue;
+            const fade = Math.max(0.08, 1 - n / column.length);
+            const green = Math.round(90 + fade * 165);
+            ctx.fillStyle = `rgba(35, ${green}, 65, ${fade})`;
+            ctx.fillText(randomGlyph(), x, trailY);
+          }
+
+          column.y += column.speed;
+
+          if (headY > height + Math.random() * height * 0.3) {
+            column.y = Math.random() * -20;
+            column.speed = 0.35 + Math.random() * 1.15;
+            column.length = 8 + Math.floor(Math.random() * 24);
+          }
+        });
+
+        ctx.shadowBlur = 0;
+        animationFrame = requestAnimationFrame(draw);
+      }
+
+      function startEffect() {
+        offerScreen.style.display = "none";
+        effect.style.display = "block";
+        running = true;
+        resize();
+        draw();
+
+        // Fullscreen is optional and only attempted from the user's tap.
+        if (effect.requestFullscreen) {
+          effect.requestFullscreen().catch(() => {
+            // The visual effect still runs if fullscreen isn't available.
+          });
+        }
+      }
+
+      yesButton.addEventListener("click", startEffect);
+
+      noButton.addEventListener("click", () => {
+        document.querySelector(".buttons").style.display = "none";
+        declined.style.display = "block";
+      });
+
+      window.addEventListener("resize", () => {
+        if (running) resize();
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden && running) {
+          cancelAnimationFrame(animationFrame);
+        } else if (!document.hidden && running) {
+          draw();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
